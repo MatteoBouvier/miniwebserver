@@ -1,6 +1,7 @@
 import os
 import re
 import gc
+import sys
 import asyncio
 
 from miniwebserver.config import TYPE_CHECKING
@@ -130,6 +131,7 @@ class WebServer:
 
     def run(self) -> None:
         loop = asyncio.get_event_loop()
+        loop.set_exception_handler(self._handle_error)
         _ = loop.create_task(self.serve())
 
         try:
@@ -153,42 +155,54 @@ class WebServer:
         _ = asyncio.create_task(tcp_server)
         _ = asyncio.create_task(self._gc())
 
+    def _handle_error(self, loop: asyncio.EventLoop, context: dict[str, Any]) -> None:
+        _ = sys.print_exception(context.get("exception", RuntimeError("Unknown error")))
+
+        loop.close()
+        sys.exit()
+
     async def _handle_client(
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
-        request = await Request.get(reader)
+        while True:
+            request = await Request.get(reader)
 
-        if request is None:
-            writer.close()
-            await writer.wait_closed()
-            return
+            if request is None:
+                writer.close()
+                await writer.wait_closed()
+                return
 
-        callback, args = self.match_route(request)
-        if callback is not None:
-            response = callback(*args)
+            callback, args = self.match_route(request)
+            if callback is not None:
+                response = callback(*args)
 
-        elif request.method == Method.GET:
-            try:
-                response = self.get_media(request)
+            elif request.method == Method.GET:
+                try:
+                    response = self.get_media(request)
 
-            except Exception as err:
-                response = Response.InternalServerError(
-                    print_exception(err), MIMEType.html
-                )
+                except Exception as err:
+                    response = Response.InternalServerError(
+                        print_exception(err), MIMEType.html
+                    )
 
-        elif request.method in (Method.POST, Method.PUT, Method.DELETE, Method.PATCH):
-            response = Response.empty(Code.e404)
+            elif request.method in (
+                Method.POST,
+                Method.PUT,
+                Method.DELETE,
+                Method.PATCH,
+            ):
+                response = Response.empty(Code.e404)
 
-        else:
-            response = Response.empty(Code.e405)
+            else:
+                response = Response.empty(Code.e405)
 
-        await response.send(writer)
+            await response.send(writer)
 
     def _get_asset(
         self, requested_file_name: str, sub_t: str, extension: str
     ) -> bytes | None:
-        if requested_file_name in os.listdir(self.source_folder + "/assets"):
-            return b"{0}{1}/assets/{2}".format(
+        if requested_file_name in os.listdir("{0}/assets".format(self.source_folder)):
+            return b"{0:s}{1}/assets/{2}".format(
                 FILE_MARKER, self.source_folder, requested_file_name
             )
 
@@ -198,7 +212,7 @@ class WebServer:
             if requested_file_name in os.listdir(
                 "{0}/assets/{1}".format(self.source_folder, sub_t)
             ):
-                return b"{0}{1}/assets/{2}/{3}".format(
+                return b"{0:s}{1}/assets/{2}/{3}".format(
                     FILE_MARKER, self.source_folder, sub_t, requested_file_name
                 )
 

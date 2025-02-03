@@ -85,7 +85,7 @@ class Response:
         )
 
         for header, value in self.headers.items():
-            writer.write(b"{0}: {1}\r\n".format(header, value))
+            writer.write(b"{0:s}: {1:s}\r\n".format(header, value))
 
         writer.write(b"\r\n")
         await writer.drain()
@@ -104,7 +104,7 @@ class Response:
                     chunk = data.read(_WRITE_BUF_SIZE)
                     while chunk:
                         # Send the size of the chunk in hexadecimal, followed by the chunk itself
-                        writer.write(b"{0}\r\n".format(hex(len(chunk))).encode())
+                        writer.write(b"{0:X}\r\n".format(len(chunk)))
                         writer.write(chunk)
                         writer.write(b"\r\n")
 
