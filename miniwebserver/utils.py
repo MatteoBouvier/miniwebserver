@@ -11,13 +11,13 @@ def html_document(title: str, *, head: str = "", body: str = "") -> bytes:
     return b"""<!doctype html>
 <html lang="en">
 <head>
-  <title>{0}</title>
-  {1}
+  <title>%s</title>
+  %s
 </head>
 <body>
-  {2}
+  %s
 </body>
-</html>""".format(title, head, body)
+</html>""" % (title, head, body)
 
 
 def print_exception(err: Exception) -> bytes:
@@ -25,7 +25,7 @@ def print_exception(err: Exception) -> bytes:
     print("[Warning] An internal error occured:", file=sys.stderr)
 
     err_str_buffer = io.StringIO()
-    sys.print_exception(err, err_str_buffer)  # pyright: ignore[reportUnknownMemberType]
+    sys.print_exception(err, err_str_buffer)
     err_str = err_str_buffer.getvalue()
 
     return html_document(

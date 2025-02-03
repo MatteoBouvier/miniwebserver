@@ -20,11 +20,12 @@ class WebServer:
     def __init__(
         self,
         *,
+        host: str = "0.0.0.0",
         port: int = 80,
         source_folder: str = ".",
-        use_micro_python: bool = True,
         **globals: "Any",
     ):
+        self.host: str = host
         self.port: int = port
         self.source_folder: str = source_folder
         self.globals: dict[str, "Any"] = globals
@@ -119,12 +120,14 @@ class WebServer:
 
     def match_route(
         self, request: Request
-    ) -> tuple[Callable[..., Response] | None, tuple[str, ...]]:
+    ) -> tuple[Callable[..., Response] | None, tuple[Any, ...]]:
         req_parts = request.path.split("/")
 
         for route in self.routes[request.method]:
             matched, args = self._match_one_route(route, req_parts)
             if matched:
+                if request.method is not Method.GET:
+                    args = (request,) + args
                 return self.routes[request.method][route], args
 
         return None, ()
@@ -150,7 +153,7 @@ class WebServer:
 
     async def serve(self) -> None:
         tcp_server = asyncio.start_server(
-            self._handle_client, "0.0.0.0", self.port, backlog=10
+            self._handle_client, self.host, self.port, backlog=10
         )
         _ = asyncio.create_task(tcp_server)
         _ = asyncio.create_task(self._gc())
@@ -196,24 +199,37 @@ class WebServer:
             else:
                 response = Response.empty(Code.e405)
 
-            await response.send(writer)
+            try:
+                await response.send(writer)
+
+            except OSError:
+                writer.close()
+                await writer.wait_closed()
+                return
 
     def _get_asset(
         self, requested_file_name: str, sub_t: str, extension: str
     ) -> bytes | None:
         if requested_file_name in os.listdir("{0}/assets".format(self.source_folder)):
-            return b"{0:s}{1}/assets/{2}".format(
-                FILE_MARKER, self.source_folder, requested_file_name
+            return b"%s%s/assets/%s" % (
+                FILE_MARKER,
+                self.source_folder,
+                requested_file_name,
             )
 
         sub_t = extension if sub_t == "*" else sub_t
+        if sub_t == "*":
+            return None
 
         try:
             if requested_file_name in os.listdir(
-                "{0}/assets/{1}".format(self.source_folder, sub_t)
+                "%s/assets/%s" % (self.source_folder, sub_t)
             ):
-                return b"{0:s}{1}/assets/{2}/{3}".format(
-                    FILE_MARKER, self.source_folder, sub_t, requested_file_name
+                return b"%s%s/assets/%s/%s" % (
+                    FILE_MARKER,
+                    self.source_folder,
+                    sub_t,
+                    requested_file_name,
                 )
 
         except OSError:
@@ -222,8 +238,11 @@ class WebServer:
         return None
 
     def get_media(self, request: Request) -> Response:
-        requested_file_name = request.path[1:]
-        extension = request.path.split(".")[1]
+        path = request.path
+        requested_file_name = path[1:]
+
+        split_index = path.rfind(".")
+        extension = "" if split_index == -1 else path[(split_index + 1) :]
         mime_type = MIMEType.match(extension)
 
         if mime_type is None:
@@ -242,8 +261,10 @@ class WebServer:
                 return Response.OK(maybe_body, mime_type)
 
             elif requested_file_name in os.listdir(self.source_folder):
-                body = b"{0}{1}/{2}".format(
-                    FILE_MARKER, self.source_folder, requested_file_name
+                body = b"%s%s/%s" % (
+                    FILE_MARKER,
+                    self.source_folder,
+                    requested_file_name,
                 )
                 return Response.OK(body, mime_type)
 

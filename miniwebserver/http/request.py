@@ -58,27 +58,22 @@ class Request:
         path = path.decode()
 
         parsed_headers: dict[Header, bytes] = {}
-        body = b""
-        parsing_headers = True
 
         while True:
             line = await reader.readline()
             line = line.strip()
             if line:
-                if parsing_headers:
-                    name, value = line.split(b": ")
-                    parsed_headers[name] = value  # pyright: ignore[reportArgumentType]
-
-                else:
-                    body += line
-
-            elif parsing_headers:
-                if not parsed_headers.get(Header.ContentLength, ""):
-                    break
-                parsing_headers = False
+                name, value = line.split(b": ")
+                parsed_headers[name] = value  # pyright: ignore[reportArgumentType]
 
             else:
                 break
+
+        if content_len := int(parsed_headers.get(Header.ContentLength, 0)):
+            body = await reader.readexactly(content_len)
+
+        else:
+            body = b""
 
         return Request(
             method,

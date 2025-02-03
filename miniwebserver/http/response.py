@@ -67,16 +67,15 @@ class Response:
             Code.e500,
             {
                 Header.ContentType: mime_type,  # pyright: ignore[reportArgumentType]
-                Header.ContentLength: b"{}".format(len(body)),
+                Header.ContentLength: b"%s" % len(body),
             },
             body,
         )
 
-    b"test".find
-
     async def send(self, writer: asyncio.StreamWriter) -> None:
         writer.write(
-            b"HTTP/{0}.{1} {2} {3}\r\n".format(
+            b"HTTP/%d.%d %d %s\r\n"
+            % (
                 self.version.major,
                 self.version.minor,
                 Code.get_value(self.status_code),
@@ -85,7 +84,7 @@ class Response:
         )
 
         for header, value in self.headers.items():
-            writer.write(b"{0:s}: {1:s}\r\n".format(header, value))
+            writer.write(b"%s: %s\r\n" % (header, value))
 
         writer.write(b"\r\n")
         await writer.drain()
@@ -104,7 +103,7 @@ class Response:
                     chunk = data.read(_WRITE_BUF_SIZE)
                     while chunk:
                         # Send the size of the chunk in hexadecimal, followed by the chunk itself
-                        writer.write(b"{0:X}\r\n".format(len(chunk)))
+                        writer.write(b"%X\r\n" % len(chunk))
                         writer.write(chunk)
                         writer.write(b"\r\n")
 

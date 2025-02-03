@@ -9,7 +9,7 @@ else:
 
 
 class MIMEType(Enum):
-    NONE = const(b"")
+    NONE = const(b"*")
     html = const(b"text/html; charset=utf-8")
     css = const(b"text/css; charset=utf-8")
     js = const(b"text/javascript; charset=utf-8")
@@ -25,6 +25,7 @@ class MIMEType(Enum):
     @classmethod
     def match(cls, extension: str) -> Union["MIMEType", None]:
         return {
+            "": MIMEType.NONE,
             "html": MIMEType.html,
             "css": MIMEType.css,
             "js": MIMEType.js,
