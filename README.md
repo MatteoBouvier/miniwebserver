@@ -25,6 +25,17 @@ When the web server receives a GET request for some file, it will look for it in
 * `source_folder`/assets/
 * `source_folder`/assets/extension/                    # extension can be css, js, html, ...
 
+Example file architecture:
+```
+src/
+    index.html
+    assets/
+        js/
+            ... js scripts
+        css/
+            ... css styles
+```
+
 ## Add custom routes
 
 Custom routes can be defined using the `Webser.get()`, `Webser.post()`, `Webser.put()`, `Webser.delete()` and 
