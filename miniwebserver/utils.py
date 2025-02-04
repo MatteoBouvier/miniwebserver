@@ -1,6 +1,8 @@
 import io
 import sys
 
+from miniwebserver.enums import FILE_MARKER
+
 
 def get_media_types(MIME_type: str) -> list[str]:
     types = [t.split(";q=") if ";" in t else (t, 1) for t in MIME_type.split(",")]
@@ -46,3 +48,7 @@ body {
             .replace("\n", "<br>")
         ),
     )
+
+
+def File(path: str) -> bytes:
+    return b"%s%s" % (FILE_MARKER, path)
