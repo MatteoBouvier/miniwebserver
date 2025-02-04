@@ -14,6 +14,7 @@ Create a web server on host `0.0.0.0` and port `80`:
 from miniwebserver import WebServer, MIMEType, Request
 
 app = WebServer(host="0.0.0.0", port=80, source_folder="src")
+app.run()
 ```
 
 The `source_folder` option allows to define where files to be served are stored.
