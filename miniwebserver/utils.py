@@ -25,6 +25,7 @@ def html_document(title: str, *, head: str = "", body: str = "") -> bytes:
 def print_exception(err: Exception) -> bytes:
     """Print exception to stderr AND return traceback formatted to HTML"""
     print("[Warning] An internal error occured:", file=sys.stderr)
+    sys.print_exception(err, sys.stderr)
 
     err_str_buffer = io.StringIO()
     sys.print_exception(err, err_str_buffer)
